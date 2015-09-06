@@ -1,0 +1,186 @@
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>BackBone</title>
+	<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.5/custom/bootstrap.min.css">
+	<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.1/jquery.min.js"></script>	
+	<script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.2/underscore-min.js"></script>
+	<script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/0.9.2/backbone-min.js"></script>
+	
+</head>
+<body>
+
+	<div class="container">
+		<h2>User Management</h2>
+		<hr/>
+		<div class="page"></div>
+		<hr/>
+		<p>
+		ref: https://www.youtube.com/watch?v=FZSjvWtUxYk
+		</p>
+	</div>
+	
+	<script type="text/template" id="user-list-template">	
+		<a href="#/new" class="btn btn-primary">New User</a>
+		<hr>
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>Id</th><th>Name</th><th>Age</th><th>Salary</th><th>Gender</th><th>Dob</th>
+				</tr>
+			</thead>
+			<tbody>
+				<% _.each(users,function(user){ %>
+					<tr>
+						<td><%=user.get('id')%></td>
+						<td><%=user.get('name')%></td>
+						<td><%=user.get('age')%></td>
+						<td><%=user.get('salary')%></td>
+						<td><%=user.get('gender')%></td>
+						<td><%=user.get('dob')%></td>
+						<td><a href="#/edit/<%= user.get('id') %>" class="btn btn-primary"> Edit</a></td>
+					</tr>
+				<% }); %>
+			
+			</tbody>
+		</table>
+	</script>
+	<script type="text/template" id="user-edit-template">
+		<form class="edit-user-form col-md-2">
+			<legend><%= user?'Update User':'Create User' %></legend>
+			<% if(user){ %>
+				
+				<label>ID</label>
+				<input type="text" readonly name="id" value="<%=user?user.get('id'):''%>" />
+			<%}%>
+			<label>Name</label>
+			<input type="text" name="name" value="<%=user?user.get('name'):''%>" />
+			<label>Age</label>
+			<input type="text" name="age" value="<%=user?user.get('age'):''%>"/>
+			<label>Salary</label>
+			<input type="text" name="salary" value="<%=user?user.get('salary'):''%>"/>
+			<label>Gender</label>
+			<input type="text" name="gender" value="<%=user?user.get('gender'):''%>"/>
+			<label>DOB</label>
+			<input type="text" name="dob" value="<%=user?user.get('dob'):''%>"/>
+			<hr/>
+			<%if(user){%>
+				<button type="submit" class="btn btn-primary">Update</button>
+				<button class="btn btn-danger delete">Delete</button>
+			<%}else{%>
+				<button type="submit" class="btn btn-primary">Create</button>
+			<%}%>
+			
+			
+			
+		
+		</form>
+	</script>
+	<script>
+	
+		
+	
+	
+	
+		var Router = Backbone.Router.extend({
+			routes:{
+				'':'home',
+				'new':'editUser',
+				'edit/:id':'editUser'
+			}		
+		});
+		
+		var Users = Backbone.Collection.extend({
+			url:'/service/users'
+		});
+
+		var User = Backbone.Model.extend({
+			urlRoot:'/service/users'
+		});
+		
+		
+		var EditUser = Backbone.View.extend({
+			el:'.page',
+			render:function(options){
+				var that = this;
+				if(options.id){
+					that.user = new User({id:options.id});
+					that.user.fetch({
+						success:function(user){
+							console.log({user:user})
+							var template = _.template($('#user-edit-template').html(), {user:user});
+							that.$el.html(template)		
+						}
+					});
+				}else{
+					var template = _.template($('#user-edit-template').html(), {user:null});
+					that.$el.html(template)			
+				}
+				
+			},
+			events:{
+				'submit .edit-user-form':'saveUser',
+				'click .delete':'deleteUser'
+			},
+			saveUser:function(e){
+				var a = $(e.currentTarget).serializeArray();
+				var userDetails={};
+				$.each(a,function(){
+						if(this.value){
+							userDetails[this.name]=this.value
+						}
+				})
+				var user = new User();				
+				user.save(userDetails,{
+					success:function(user){
+						console.log('user saved ...............',user);
+						router.navigate('',{trigger:true});
+					}
+				})
+				
+				return false;			
+			},
+			deleteUser:function(e){
+				console.log('deleting user', this.user);
+				this.user.destroy({
+					success:function(){
+						console.log('user destroyed....');
+						router.navigate('',{trigger:true});
+					}				
+				});
+				return false;
+			}
+		});
+		
+		var UserList =Backbone.View.extend({
+			el:'.page',
+			render:function(){
+				console.log('userlist rnder...................')
+				var that = this;
+				var users= new Users();
+				users.fetch({
+					success:function(users){
+						var template = _.template($('#user-list-template').html(), {users:users.models});
+						that.$el.html(template)						
+					}
+				})
+				
+			}
+		});
+		
+		var userList = new UserList();
+		var edituser = new EditUser();
+		
+		
+		var router = new Router();
+		router.on('route:home',function(){			
+			userList.render();
+		});
+		router.on('route:editUser',function(id){			
+			edituser.render({id:id});
+		});
+		Backbone.history.start();
+	</script>
+</body>
+</html>
